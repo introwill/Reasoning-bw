@@ -27,13 +27,13 @@ import time
 from datetime import datetime
 import itertools
 
-matplotlib.use('TKAgg')  # 用于解决绘图时的报错问题
+matplotlib.use('TKAgg')  # Used to resolve errors when plotting
 seed_value = 3407
 np.random.seed(seed_value)
 torch.manual_seed(seed_value)
 torch.backends.cudnn.deterministic = True
 
-# 数据集处理
+# Dataset processing
 def encode_labels(File, columns_to_encode):
     one_hot_encoded_df = pd.get_dummies(File[columns_to_encode], columns=columns_to_encode, prefix_sep='_')
     selected_columns = [col for col in one_hot_encoded_df.columns if col.endswith('_1')]
@@ -53,7 +53,7 @@ def open_excel(filename, columns_to_encode):
     print(Covariates_features)
     return data, target, all_feature_names, Covariates_features
 
-# 自定义数据集类
+# Custom dataset class
 class NetDataset(Dataset):
     def __init__(self, features, labels):
         self.Data = features
@@ -66,7 +66,7 @@ class NetDataset(Dataset):
         return len(self.Data)
 
 
-# 数据标准化与交叉验证划分
+# Data standardization and cross-validation split
 def split_data_5fold(input_data):
     np.random.seed(3407)
     indices = np.arange(len(input_data))
@@ -80,55 +80,55 @@ def split_data_5fold(input_data):
         folds_data_index.append((train_indices, validation_indices, test_indices))
     return folds_data_index
 
-# 添加绘制混淆矩阵的函数
+# Add function to plot confusion matrix
 def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cmap=plt.cm.Blues, is_sum=False):
     """
-    绘制并显示混淆矩阵，使用归一化处理
+    Plot and display the confusion matrix with normalization
     
-    参数:
-    cm -- 混淆矩阵，对于多标签问题，形状为(n_classes, 2, 2)
-    classes -- 类别名称列表
-    fold -- 当前fold编号
-    epoch -- 当前epoch编号
-    title -- 图表标题
-    cmap -- 颜色映射
-    is_sum -- 是否为累积混淆矩阵
+    Parameters:
+    cm -- confusion matrix, for multi-label problems, shape is (n_classes, 2, 2)
+    classes -- list of class names
+    fold -- current fold number
+    epoch -- current epoch number
+    title -- chart title
+    cmap -- color map
+    is_sum -- whether it's a cumulative confusion matrix
     """
-    # 确保figure目录存在
+    # Ensure figure directory exists
     if not os.path.exists('figure'):
         os.makedirs('figure')
     
-    # 处理多标签混淆矩阵
+    # Handle multi-label confusion matrix
     if cm.ndim == 3 and cm.shape[1] == 2 and cm.shape[2] == 2:
-        # 多标签情况，为每个类别绘制单独的混淆矩阵
+        # Multi-label case, plot separate confusion matrix for each class
         for i, class_name in enumerate(classes):
             plt.figure(figsize=(8, 6))
             
-            # 提取当前类别的混淆矩阵
+            # Extract current class confusion matrix
             cm_i = cm[i]
             
-            # 创建原始混淆矩阵的副本
+            # Create a copy of the original confusion matrix
             cm_original = cm_i.copy()
             
-            # 归一化混淆矩阵
+            # Normalize confusion matrix
             cm_row_sum = cm_i.sum(axis=1)
             cm_normalized = np.zeros_like(cm_i, dtype=float)
             for j in range(cm_i.shape[0]):
                 if cm_row_sum[j] > 0:
                     cm_normalized[j] = cm_i[j] / cm_row_sum[j]
             
-            # 绘制归一化后的混淆矩阵
+            # Plot normalized confusion matrix
             plt.imshow(cm_normalized, interpolation='nearest', cmap=cmap)
             plt.title(f'{title} - {class_name} (Fold {fold+1}, Epoch {epoch})')
             plt.colorbar()
             
-            # 设置标签
+            # Set labels
             labels = ['Negative', 'Positive']
             tick_marks = np.arange(len(labels))
             plt.xticks(tick_marks, labels)
             plt.yticks(tick_marks, labels)
             
-            # 在每个单元格中添加原始数值和归一化后的百分比
+            # Add original values and normalized percentages to each cell
             thresh = cm_normalized.max() / 2.
             for j, k in itertools.product(range(cm_i.shape[0]), range(cm_i.shape[1])):
                 plt.text(k, j, f"{cm_original[j, k]}\n({cm_normalized[j, k]:.2f})",
@@ -148,16 +148,16 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
             
             plt.close()
         
-        # 创建一个汇总的混淆矩阵可视化
+        # Create a summary visualization of the confusion matrix
         plt.figure(figsize=(15, 10))
         
-        # 计算每个类别的性能指标
+        # Calculate performance metrics for each class
         metrics = []
         for i, class_name in enumerate(classes):
             tn, fp = cm[i][0, 0], cm[i][0, 1]
             fn, tp = cm[i][1, 0], cm[i][1, 1]
             
-            # 计算指标
+            # Calculate metrics
             accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
             precision = tp / (tp + fp) if (tp + fp) > 0 else 0
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0
@@ -166,11 +166,11 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
             
             metrics.append([class_name, accuracy, precision, recall, specificity, f1])
         
-        # 创建表格
-        columns = ['Class', 'Accuracy', 'Precision', 'Recall', 'Specificity', 'F1-Score']
+        # Create table
+        columns = ['Class', 'Accuracy', 'Precision', 'Recall', 'Specificity', 'F1-Score'] 
         cell_text = [[f"{m[0]}", f"{m[1]:.2f}", f"{m[2]:.2f}", f"{m[3]:.2f}", f"{m[4]:.2f}", f"{m[5]:.2f}"] for m in metrics]
         
-        # 绘制表格
+        # Draw table
         table = plt.table(cellText=cell_text, colLabels=columns, loc='center', cellLoc='center')
         table.auto_set_font_size(False)
         table.set_fontsize(10)
@@ -179,7 +179,7 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
         
         plt.title(f'Performance Metrics Summary (Fold {fold+1})', fontsize=14)
         
-        # 保存汇总图像
+        # save the summary figure
         if is_sum:
             plt.savefig(f'figure/confusion_matrix_summary_fold{fold+1}_sum.png', dpi=300, bbox_inches='tight')
         else:
@@ -187,18 +187,18 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
         
         plt.close()
     else:
-        # 单标签情况，原始代码
+        # Single-label case, original code
         plt.figure(figsize=(12, 10))
-        
-        # 创建原始混淆矩阵的副本
+
+        # Create a copy of the original confusion matrix
         cm_original = cm.copy()
-        
-        # 归一化混淆矩阵
+
+        # Normalize confusion matrix
         cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        # 处理可能的除零问题
+        # Handle potential division by zero
         cm_normalized = np.nan_to_num(cm_normalized)
-        
-        # 绘制归一化后的混淆矩阵
+
+        # Plot normalized confusion matrix
         plt.imshow(cm_normalized, interpolation='nearest', cmap=cmap)
         plt.title(f'{title} (Fold {fold+1}, Epoch {epoch})')
         plt.colorbar()
@@ -206,8 +206,8 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
         tick_marks = np.arange(len(classes))
         plt.xticks(tick_marks, classes, rotation=45)
         plt.yticks(tick_marks, classes)
-        
-        # 在每个单元格中添加原始数值和归一化后的百分比
+
+        # Add original values and normalized percentages to each cell
         for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
             if np.sum(cm_original[i]) > 0:  # 避免除以零
                 plt.text(j, i, f"{cm_original[i, j]}\n({cm_normalized[i, j]:.2f})",
@@ -219,7 +219,7 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
         plt.ylabel('Actual')
         plt.xlabel('Predicted')
         
-        # 保存图像
+        # save image
         if is_sum:
             plt.savefig(f'figure/confusion_matrix_normalized_fold{fold+1}_sum.png', dpi=300, bbox_inches='tight')
         else:
@@ -229,61 +229,61 @@ def plot_confusion_matrix(cm, classes, fold, epoch, title='Confusion Matrix', cm
 
 def generate_multilabel_confusion_matrix(y_true, y_pred, fold, epoch):
     """
-    生成多标签分类的32×32混淆矩阵
+    Generate a 32×32 confusion matrix for multi-label classification
     
-    参数:
-    y_true -- 真实标签，形状为(n_samples, 5)
-    y_pred -- 预测标签，形状为(n_samples, 5)
-    fold -- 当前fold编号
-    epoch -- 当前epoch编号
+    Parameters:
+    y_true -- true labels, shape (n_samples, 5)
+    y_pred -- predicted labels, shape (n_samples, 5)
+    fold -- current fold number
+    epoch -- current epoch number
     """
-    # 确保figure目录存在
+    # Ensure figure directory exists
     if not os.path.exists('figure'):
         os.makedirs('figure')
     
-    # 将多标签转换为单一类别标签（0-31）
+    # Convert multi-label to single category labels (0-31)
     def multilabel_to_class(labels):
         return np.sum(labels * np.array([2**i for i in range(labels.shape[1])]), axis=1).astype(int)
     
-    # 转换真实标签和预测标签
+    # Convert true labels and predicted labels
     y_true_class = multilabel_to_class(y_true)
     y_pred_class = multilabel_to_class(y_pred)
     
-    # 计算混淆矩阵
+    # Calculate confusion matrix
     cm = confusion_matrix(y_true_class, y_pred_class, labels=range(32))
     
-    # 创建类别标签
+    # Create class labels
     class_names = []
     for i in range(32):
-        # 将数字转换为二进制表示，然后填充到5位
+        # Convert number to binary representation, then pad to 5 digits
         binary = format(i, '05b')
-        # 创建标签，例如 "10110" 表示第1、3、4类疾病存在
+        # Create label, e.g. "10110" means diseases 1, 3, 4 are present
         class_names.append(binary)
     
-    # 绘制混淆矩阵
+    # Plot confusion matrix
     plt.figure(figsize=(20, 18))
     
-    # 归一化混淆矩阵
+    # Normalize confusion matrix
     cm_row_sum = cm.sum(axis=1)
     cm_normalized = np.zeros_like(cm, dtype=float)
     for i in range(cm.shape[0]):
         if cm_row_sum[i] > 0:
             cm_normalized[i] = cm[i] / cm_row_sum[i]
     
-    # 绘制归一化后的混淆矩阵
+    # Plot normalized confusion matrix
     plt.imshow(cm_normalized, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title(f'32×32 Confusion Matrix (Fold {fold+1}, Epoch {epoch})', fontsize=16)
     plt.colorbar()
     
-    # 设置标签
+    # Set labels
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=90, fontsize=8)
     plt.yticks(tick_marks, class_names, fontsize=8)
     
-    # 在每个单元格中添加数值
+    # Add values to each cell
     thresh = cm_normalized.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        if cm[i, j] > 0:  # 只显示非零值
+        if cm[i, j] > 0:  # Only show non-zero values
             plt.text(j, i, f"{cm[i, j]}",
                     horizontalalignment="center", 
                     color="white" if cm_normalized[i, j] > thresh else "black", 
@@ -293,23 +293,23 @@ def generate_multilabel_confusion_matrix(y_true, y_pred, fold, epoch):
     plt.ylabel('True label', fontsize=14)
     plt.xlabel('Predicted label', fontsize=14)
     
-    # 保存图像
+    # save image
     plt.savefig(f'figure/confusion_matrix_32x32_fold{fold+1}_epoch{epoch}.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    # 计算每个类别的性能指标
+    # Calculate performance metrics for each class
     precision = np.zeros(32)
     recall = np.zeros(32)
     f1 = np.zeros(32)
     
-    # 计算每个类别的精确率、召回率和F1分数
+    # Calculate precision, recall and F1 score for each class
     for i in range(32):
-        # 计算真阳性、假阳性和假阴性
+        # Calculate true positives, false positives and false negatives
         tp = cm[i, i]
         fp = np.sum(cm[:, i]) - tp
         fn = np.sum(cm[i, :]) - tp
         
-        # 计算精确率和召回率
+        # Calculate precision and recall
         if tp + fp > 0:
             precision[i] = tp / (tp + fp)
         else:
@@ -320,7 +320,7 @@ def generate_multilabel_confusion_matrix(y_true, y_pred, fold, epoch):
         else:
             recall[i] = 0
             
-        # 计算F1分数
+        # Calculate F1 score
         if precision[i] + recall[i] > 0:
             f1[i] = 2 * precision[i] * recall[i] / (precision[i] + recall[i])
         else:
@@ -329,18 +329,18 @@ def generate_multilabel_confusion_matrix(y_true, y_pred, fold, epoch):
     return cm, precision, recall, f1
 
 
-# 在test_xgb函数中添加对新函数的调用
+
 def test_xgb(X_test, y_test, models, probs_Switcher):
     all_probs = np.zeros((X_test.shape[0], len(models)))
     
-    # 对每个类别使用对应的模型进行预测
+
     for i, model in enumerate(models):
         dtest = xgb.DMatrix(X_test)
         all_probs[:, i] = model.predict(dtest)
     
     test_f1, test_accuracy, test_precision, test_recall, preds, test_specificity = f1_score_func(all_probs, y_test, probs_Switcher)
-    
-    # 计算AUC-ROC
+
+    # Calculate AUC-ROC
     auc_scores = []
     for i in range(y_test.shape[1]):
         try:
@@ -349,14 +349,14 @@ def test_xgb(X_test, y_test, models, probs_Switcher):
         except ValueError:
             print(f"Class {i} has only one class present in test set.")
             auc_scores.append(float('nan'))
-    
-    # 计算宏平均和加权平均AUC
+
+    # Calculate macro and weighted average AUC
     macro_auc = np.nanmean(auc_scores)
     weighted_auc = roc_auc_score(y_test, all_probs, average='weighted', multi_class='ovr')
     
     return test_f1, test_accuracy, test_precision, test_recall, test_specificity, macro_auc, weighted_auc, auc_scores, all_probs, y_test, preds
 
-# 阈值计算函数
+# Threshold calculation function
 def Probs_Switcher(probs, labels):
     probs_Switcher = np.array([])
     
@@ -364,19 +364,19 @@ def Probs_Switcher(probs, labels):
         split_labels_np = labels[:, i]
         split_probs_np = probs[:, i]
         precision, recall, thresholds = precision_recall_curve(split_labels_np, split_probs_np)
-        precision = precision * 0.6  # 可以根据需要调整这个权重
+        precision = precision * 0.6  # This weight can be adjusted as needed
         recall = recall
         f1_scores = (2 * precision * recall) / (precision + recall + 1e-8)
         index = argmax(f1_scores)
         if len(thresholds) > index:
             probs_Switcher = np.append(probs_Switcher, thresholds[index])
         else:
-            # 如果index超出thresholds范围，使用默认阈值0.5
+            # If index exceeds thresholds range, use default threshold 0.5
             probs_Switcher = np.append(probs_Switcher, 0.5)
 
     return probs_Switcher
 
-# 指标计算函数
+# Metrics calculation function
 def f1_score_func(probs, labels, probs_Switcher):
     preds = np.float64(probs >= probs_Switcher)
 
@@ -385,7 +385,7 @@ def f1_score_func(probs, labels, probs_Switcher):
     precision = precision_score(labels, preds, average='weighted', zero_division=0)
     recall = recall_score(labels, preds, average='weighted', zero_division=0)
 
-    # 特异性计算
+    # Specificity calculation
     cm = multilabel_confusion_matrix(labels, preds)
     specificities = []
     for i in range(cm.shape[0]):
@@ -395,7 +395,7 @@ def f1_score_func(probs, labels, probs_Switcher):
         else:
             specificity = tn / (tn + fp)
         specificities.append(specificity)
-    specificity = np.mean(specificities) * 100  # 使用宏平均
+    specificity = np.mean(specificities) * 100  # Using macro average
 
     return f1 * 100, accuracy * 100, precision * 100, recall * 100, preds, specificity
 
@@ -404,13 +404,13 @@ def get_parameter_number(model):
     trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total_num, trainable_num
 
-# 修改VGG特征提取器类
+# Modified VGG feature extractor class
 class DNNFeatureExtractor(nn.Module):
     def __init__(self, input_dim=92):
         super(DNNFeatureExtractor, self).__init__()
-        # 创建一个新的特征提取网络，适合我们的输入维度
+        # Create a new feature extraction network suitable for our input dimensions
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_dim, 256),  # 输入维度为93（PCA特征数量）
+            nn.Linear(input_dim, 256),  # Input dimension is 93 (number of PCA features)
             nn.ReLU(inplace=True),
             nn.Dropout(0.5),
             nn.Linear(256, 128),
@@ -422,10 +422,10 @@ class DNNFeatureExtractor(nn.Module):
     def forward(self, x):
         return self.feature_extractor(x)
 
-# DNN训练函数
+# DNN training function
 def train_dnn_extractor(model, train_loader, val_loader, device, num_epochs=100):
     model.train()
-    criterion = nn.MSELoss()  # 使用MSE损失进行特征学习
+    criterion = nn.MSELoss()  # Using MSE loss for feature learning
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     best_loss = float('inf')
@@ -433,16 +433,16 @@ def train_dnn_extractor(model, train_loader, val_loader, device, num_epochs=100)
         model.train()
         train_loss = 0.0
         
-        for data, _ in train_loader:  # 我们不需要标签，进行无监督学习
+        for data, _ in train_loader:  # We don't need labels, performing unsupervised learning
             data = data.float().to(device)
             optimizer.zero_grad()
             output = model(data)
-            loss = criterion(output, data)  # 自编码器式训练
+            loss = criterion(output, data)  # Autoencoder-style training
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
-        
-        # 验证
+
+        # Validate
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -452,17 +452,17 @@ def train_dnn_extractor(model, train_loader, val_loader, device, num_epochs=100)
                 val_loss += criterion(output, data).item()
         
         print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader):.4f}, Val Loss: {val_loss/len(val_loader):.4f}')
-        
-        # 早停机制
+
+        # Early stopping mechanism
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save(model.state_dict(), 'best_dnn_extractor.pth')
-    
-    # 加载最佳模型
+
+    # Load best model
     model.load_state_dict(torch.load('best_dnn_extractor.pth'))
     return model
 
-# 修改特征提取函数
+# Modify feature extraction function
 def extract_vgg_features(model, data_loader, device):
     model.eval()
     features = []
@@ -471,7 +471,7 @@ def extract_vgg_features(model, data_loader, device):
     with torch.no_grad():
         for data, target in data_loader:
             data, target = data.float().to(device), target.float().to(device)
-            # 提取特征
+            # Extract features
             feature = model(data)
             
             features.append(feature.cpu().numpy())
@@ -482,18 +482,18 @@ def extract_vgg_features(model, data_loader, device):
     
     return features, labels
 
-# 测试函数
+# Test function
 def test_xgb(X_test, y_test, models, probs_Switcher):
     all_probs = np.zeros((X_test.shape[0], len(models)))
-    
-    # 对每个类别使用对应的模型进行预测
+
+    # Use corresponding model for each class to make predictions
     for i, model in enumerate(models):
         dtest = xgb.DMatrix(X_test)
         all_probs[:, i] = model.predict(dtest)
     
     test_f1, test_accuracy, test_precision, test_recall, preds, test_specificity = f1_score_func(all_probs, y_test, probs_Switcher)
-    
-    # 计算AUC-ROC
+
+    # Calculate AUC-ROC
     auc_scores = []
     for i in range(y_test.shape[1]):
         try:
@@ -502,72 +502,72 @@ def test_xgb(X_test, y_test, models, probs_Switcher):
         except ValueError:
             print(f"Class {i} has only one class present in test set.")
             auc_scores.append(float('nan'))
-    
-    # 计算宏平均和加权平均AUC
+
+    # Calculate macro and weighted average AUC
     macro_auc = np.nanmean(auc_scores)
     weighted_auc = roc_auc_score(y_test, all_probs, average='weighted', multi_class='ovr')
     
     return test_f1, test_accuracy, test_precision, test_recall, test_specificity, macro_auc, weighted_auc, auc_scores, all_probs, y_test, preds
 
-# SHAP分析
+# SHAP analysis
 def global_shap_analysis(models, background_data, test_data, feature_names, class_names, 
                         pca_model=None, original_feature_names=None, output_dir='figure/global_shap'):
     """
-    增强版SHAP分析，支持特征逆向映射
+    Enhanced SHAP analysis with feature reverse mapping
     
-    参数:
-    models -- 训练好的XGBoost模型列表
-    background_data -- 用于SHAP解释器的背景数据
-    test_data -- 用于生成SHAP值的测试数据
-    feature_names -- 特征名称列表
-    class_names -- 类别名称列表
-    pca_model -- 使用的PCA模型对象
-    original_feature_names -- 原始特征名称列表
-    output_dir -- 输出目录
+    Parameters:
+    models -- trained XGBoost model list
+    background_data -- background data for SHAP explainer
+    test_data -- test data for generating SHAP values
+    feature_names -- feature name list
+    class_names -- class name list
+    pca_model -- PCA model object used
+    original_feature_names -- original feature name list
+    output_dir -- output directory
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # 检查特征名称长度
+    # Check feature name length
     if len(feature_names) != test_data.shape[1]:
         feature_names = [f"Feature_{i}" for i in range(test_data.shape[1])]
-        print(f"警告：自动生成特征名称，长度为 {len(feature_names)}")
+        print(f"Warning: Automatically generating feature names, length is {len(feature_names)}")
     
-    # 存储所有类别的SHAP值
+    # Store SHAP values for all classes
     all_shap_values = []
     
-    # 为每个类别处理SHAP值
+    # Process SHAP values for each class
     for i, (class_name, model) in enumerate(zip(class_names, models)):
-        print(f"计算类别 {class_name} 的全局SHAP值...")
+        print(f"Calculating global SHAP values for class {class_name}...")
         
-        # 创建解释器
+        # Create explainer
         explainer = shap.TreeExplainer(model)
         
-        # 计算SHAP值
+        # Calculate SHAP values
         shap_values = explainer.shap_values(test_data)
         all_shap_values.append(shap_values)
         
-        # 绘制条形图
+        # Plot bar chart
         plt.figure(figsize=(10, 8))
         try:
-            # 计算特征重要性（平均绝对SHAP值）
+            # Calculate feature importance (mean absolute SHAP values)
             feature_importance = np.abs(shap_values).mean(0)
-            # 获取排序索引
+            # Get sorted indices
             sorted_idx = np.argsort(feature_importance)
-            # 选择最重要的特征
+            # Select most important features
             top_features = min(20, len(feature_names))
             plt.barh(range(top_features), feature_importance[sorted_idx[-top_features:]])
             plt.yticks(range(top_features), [feature_names[i] for i in sorted_idx[-top_features:]])
             plt.xlabel('Mean |SHAP value|')
             plt.title(f'Feature Importance for Category {class_name}')
         except Exception as e:
-            print(f"绘制条形图时出错: {e}")
+            print(f"Error when plotting bar chart: {e}")
         
         plt.tight_layout()
         plt.savefig(f'{output_dir}/global_bar_plot_category_{class_name}.png')
         plt.close()
         
-        # 绘制摘要图
+        # Plot summary chart
         plt.figure(figsize=(12, 8))
         try:
             shap.summary_plot(shap_values, test_data, feature_names=feature_names, show=False, max_display=20)
@@ -575,17 +575,17 @@ def global_shap_analysis(models, background_data, test_data, feature_names, clas
             plt.tight_layout()
             plt.savefig(f'{output_dir}/global_summary_plot_category_{class_name}.png')
         except Exception as e:
-            print(f"绘制摘要图时出错: {e}")
+            print(f"Error when plotting summary chart: {e}")
         plt.close()
-    
-    # 绘制多项式图
+
+    # Plot polynomial chart
     mean_abs_shap = np.zeros((len(feature_names), len(class_names)))
     for i, shap_values in enumerate(all_shap_values):
         mean_abs_shap[:, i] = np.abs(shap_values).mean(axis=0)
     
     agg_shap_df = pd.DataFrame(mean_abs_shap, columns=class_names, index=feature_names)
-    
-    # 按特征重要性总和排序
+
+    # Sort by feature importance sum
     feature_order = agg_shap_df.sum(axis=1).sort_values(ascending=False).index
     agg_shap_df = agg_shap_df.loc[feature_order]
     
@@ -620,35 +620,35 @@ def global_shap_analysis(models, background_data, test_data, feature_names, clas
     plt.savefig(f"{output_dir}/polynomial_shap_plot.png")
     plt.close()
 
-    # 新增特征逆向映射分析
+    # New feature reverse mapping analysis
     if pca_model is not None and original_feature_names is not None and len(original_feature_names) > 0:
-        print("\n开始特征重要性逆向映射分析...")
+        print("\nStarting feature importance reverse mapping analysis...")
         
-        # 计算PCA组件的SHAP重要性
+        # Calculate SHAP importance for PCA components
         pca_shap_importance = np.abs(np.array(all_shap_values)).mean(axis=(0,1))
         
-        # 确保维度匹配
+        # Ensure dimensions match
         if len(pca_shap_importance) != pca_model.components_.shape[0]:
-            print(f"警告：SHAP重要性维度({len(pca_shap_importance)})与PCA组件数({pca_model.components_.shape[0]})不匹配，将截断或填充")
+            print(f"Warning: SHAP importance dimension ({len(pca_shap_importance)}) does not match PCA component count ({pca_model.components_.shape[0]}), will truncate or pad")
             min_dim = min(len(pca_shap_importance), pca_model.components_.shape[0])
             pca_shap_importance = pca_shap_importance[:min_dim]
             pca_components = pca_model.components_[:min_dim, :]
         else:
             pca_components = pca_model.components_
         
-        # 计算原始特征重要性 = PCA组件重要性 × PCA载荷矩阵
-        original_feature_importance = np.dot(pca_shap_importance, np.abs(pca_components))  # 使用截断后的pca_components
-        
-        # 创建并保存原始特征重要性DataFrame
+        # Calculate original feature importance = PCA component importance × PCA loading matrix
+        original_feature_importance = np.dot(pca_shap_importance, np.abs(pca_components))  # Using truncated pca_components
+
+        # Create and save original feature importance DataFrame
         importance_df = pd.DataFrame({
             'feature': original_feature_names.values if hasattr(original_feature_names, 'values') else original_feature_names,
             'importance': original_feature_importance
         }).sort_values('importance', ascending=False)
-        
-        # 保存到CSV
+
+        # Save to CSV
         importance_df.to_csv(f'{output_dir}/original_feature_importance.csv', index=False)
-        
-        # 绘制原始特征重要性图
+
+        # Plot original feature importance
         plt.figure(figsize=(12, 8))
         top_n = min(30, len(importance_df))
         sns.barplot(
@@ -669,7 +669,7 @@ def global_shap_analysis(models, background_data, test_data, feature_names, clas
 def plot_roc_curves(all_labels, all_probs, class_names):
     plt.figure(figsize=(10, 8))
 
-    # 为每个类别绘制ROC曲线
+    # Plot ROC curve for each class
     for i in range(len(class_names)):
         fpr, tpr, _ = roc_curve(all_labels[:, i], all_probs[:, i])
         roc_auc = auc(fpr, tpr)
@@ -685,401 +685,22 @@ def plot_roc_curves(all_labels, all_probs, class_names):
     plt.savefig(f'figure/vgg_xgb_roc_curves.png')
     plt.close()
 
-# def main():
-#     """
-#     主函数，包含程序的主要执行逻辑
-#     """
-#     # 设置类别
-#     columns_to_encode = ['MCQ160B', 'MCQ160C', 'MCQ160D', 'MCQ160E', 'MCQ160F']
-    
-#     # 加载数据
-#     features, labels, all_feature_names, Covariates_features = open_excel('DR-CVD DataSet v1.2', columns_to_encode=columns_to_encode)
-    
-#     # 保留原始数据用于测试
-#     features_val = features.copy()
-#     labels_val = labels.copy()
-    
-#     # 数据增强
-#     Multilay_origin = pd.DataFrame(features_val, columns=all_feature_names)
-    
-#     labels_DF = pd.DataFrame(labels, columns=columns_to_encode)
-#     data_DF = pd.DataFrame(features, columns=all_feature_names)
-#     X_sub, y_sub = mlsmote.get_minority_instace(data_DF, labels_DF)
-#     X_res, y_res = mlsmote.MLSMOTE(X_sub, y_sub, 500)
-    
-#     features = np.concatenate((features, np.float64(X_res)), axis=0)
-#     labels = np.concatenate((labels, np.float64(y_res)), axis=0)
-    
-#     # 标准化
-#     mean_f = np.mean(features, axis=0)
-#     std_f = np.std(features, axis=0)
-#     for i in range(len(std_f)):
-#         if std_f[i] == 0:
-#             std_f[i] = 1e-8
-    
-#     features = (features - mean_f) / std_f
-#     features_val = (features_val - mean_f) / (std_f + 1e-8)
-    
-#     # # 方差过滤
-#     # selector = VarianceThreshold(threshold=0.01)
-#     # features = selector.fit_transform(features)
-#     # features_val = selector.transform(features_val)
-    
-#     # # 更新特征名称
-#     # mask = selector.get_support()
-#     # filtered_feature_names = all_feature_names[mask]
-    
-#     # print("方差过滤后，训练集形状：", features.shape)
-#     # print("方差过滤后，验证集形状：", features_val.shape)
-        
-#     filtered_feature_names = all_feature_names.copy()
-
-#     # PCA降维
-#     pca = PCA(n_components=0.95)
-#     features_pca = pca.fit_transform(features)
-#     features_val_pca = pca.transform(features_val)
-
-#     # 确保标签数据也被正确处理
-#     train_labels = labels.copy()  # 添加这行
-#     val_labels = labels_val.copy()  # 添加这行
-    
-#     # # PCA后再次过滤零方差
-#     # pca_selector = VarianceThreshold(threshold=0.01)  
-#     # features_pca = pca_selector.fit_transform(features_pca)
-#     # features_val_pca = pca_selector.transform(features_val_pca)
-    
-#     # 更新PCA特征名称
-#     pca_feature_names = [f'PC{i}' for i in range(1, features_pca.shape[1] + 1)]
-#     print("PCA降维后，训练集形状：", features_pca.shape)
-#     print("PCA降维后，验证集形状：", features_val_pca.shape)
-    
-#     # 交叉验证划分
-#     folds_data_index = split_data_5fold(features_val_pca)
-    
-#     # 设置模型参数
-#     num_classes = len(columns_to_encode)
-#     num_epochs = 100  # VGG训练轮数
-#     batch_size = 256
-    
-#     # 让用户输入想要运行的fold编号
-#     # selected_folds_input = input("请输入想要运行的fold编号（用逗号分隔，例如：1,3,5）：")
-#     selected_folds_input = '1,2,3,4,5'  # 默认运行所有fold
-#     # if not selected_folds_input.strip():
-#     #     selected_folds_input = '1,2,3,4,5'  # 默认运行所有fold
-#     selected_folds = [int(fold.strip()) - 1 for fold in selected_folds_input.split(',')]
-    
-#     # 存储所有fold的结果
-#     all_fold_results = []
-    
-#     # 设置设备
-#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#     print(f"使用设备: {device}")
-    
-#     for fold, (train_index, validation_index, test_indices) in enumerate(folds_data_index):
-#         if fold not in selected_folds:
-#             continue
-        
-#         print(f"\n========== 开始处理 Fold {fold + 1} ==========")
-        
-#         # 准备数据
-#         trainX = features_pca  # 使用全部增强数据训练
-#         trainY = labels
-#         valX = features_val_pca[validation_index]
-#         valY = labels_val[validation_index]
-#         testX = features_val_pca[test_indices]
-#         testY = labels_val[test_indices]
-        
-#         # 创建数据加载器
-#         Train_data = NetDataset(trainX, trainY)
-#         Validation_data = NetDataset(valX, valY)
-#         Test_data = NetDataset(testX, testY)
-        
-#         Train_data_loader = DataLoader(Train_data, batch_size=batch_size, shuffle=True, drop_last=True)
-#         Validation_data_loader = DataLoader(Validation_data, batch_size=batch_size, shuffle=True, drop_last=True)
-#         Test_data_loader = DataLoader(Test_data, batch_size=batch_size, shuffle=False, drop_last=False)
-        
-#         # 第一阶段：训练DNN模型作为特征提取器
-#         print("第一阶段：训练DNN模型作为特征提取器...")
-        
-
-        
-#         # # 打印模型参数数量
-#         # total_num, trainable_num = get_parameter_number(model)
-#         # print(f'DNN模型总参数: {total_num}, 可训练参数: {trainable_num}')
-        
-#         # # 定义损失函数和优化器
-#         # criterion = nn.BCEWithLogitsLoss(reduction='mean')
-#         # optimizer = optim.Adam(model.parameters(), lr=0.001)
-#         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
-        
-#         # # 初始化早停变量
-#         # best_valid_f1 = 0
-#         # patience = 10
-#         # counter = 0
-#         # best_epoch = 0
-
-#         # 初始化DNN特征提取器
-#         dnn_extractor = DNNFeatureExtractor(input_dim=features_pca.shape[1]).to(device)
-
-#         # 打印模型参数数量
-#         total_num, trainable_num = get_parameter_number(dnn_extractor)
-#         print(f'DNN模型总参数: {total_num}, 可训练参数: {trainable_num}')
-
-#         # 训练DNN特征提取器
-#         print("训练DNN特征提取器...")
-#         dnn_extractor = train_dnn_extractor(
-#             dnn_extractor,
-#             Train_data_loader,
-#             Validation_data_loader,
-#             device,
-#             num_epochs=50  # 可以调整训练轮数
-#         )
-        
-#         # 创建特征提取器
-#         # feature_extractor = VGGFeatureExtractor(model, input_dim=features_pca.shape[1])
-#         # feature_extractor.to(device)
-        
-#         print("第二阶段：使用DNN提取特征，XGBoost进行预测...")
-            
-#         train_features, train_labels_extracted = extract_vgg_features(dnn_extractor, Train_data_loader, device)
-#         val_features, val_labels_extracted = extract_vgg_features(dnn_extractor, Validation_data_loader, device)
-#         test_features, test_labels_extracted = extract_vgg_features(dnn_extractor, Test_data_loader, device)
-        
-#         # 确保使用从数据加载器提取的标签，而不是全局变量
-#         train_labels = train_labels_extracted
-#         val_labels = val_labels_extracted
-#         test_labels = test_labels_extracted
-        
-#         print(f"提取的训练特征形状: {train_features.shape}, 训练标签形状: {train_labels.shape}")
-#         print(f"提取的验证特征形状: {val_features.shape}, 验证标签形状: {val_labels.shape}")
-#         print(f"提取的测试特征形状: {test_features.shape}, 测试标签形状: {test_labels.shape}")
-        
-#         # 为每个类别训练一个XGBoost模型
-#         xgb_models = []
-#         xgb_feature_names = [f'DNN_Feature_{i}' for i in range(train_features.shape[1])]
-        
-#         # 计算阈值
-#         probs_Switcher = np.zeros(num_classes)
-        
-#         for i in range(num_classes):
-#             print(f"训练类别 {columns_to_encode[i]} 的XGBoost模型...")
-            
-
-            
-#             # 准备数据
-#             dtrain = xgb.DMatrix(train_features, label=train_labels[:, i])
-#             dval = xgb.DMatrix(val_features, label=val_labels[:, i])
-            
-#             # 设置XGBoost参数
-#             params = {
-#                 'objective': 'binary:logistic',
-#                 'eval_metric': 'auc',
-#                 'max_depth': 6,
-#                 'eta': 0.1,
-#                 'subsample': 0.8,
-#                 'colsample_bytree': 0.8,
-#                 'min_child_weight': 1,
-#                 'gamma': 0,
-#                 'alpha': 0.1,
-#                 'lambda': 1,
-#                 'seed': 3407
-#             }
-            
-#             # 训练模型
-#             evallist = [(dtrain, 'train'), (dval, 'eval')]
-#             num_round = 100
-#             bst = xgb.train(params, dtrain, num_round, evallist, 
-#                             early_stopping_rounds=10, verbose_eval=10)
-            
-#             # 保存模型
-#             bst.save_model(f'xgb_model_fold{fold+1}_class{i}.json')
-#             xgb_models.append(bst)
-            
-#             # 计算阈值
-#             dval_pred = bst.predict(dval)
-#             precision, recall, thresholds = precision_recall_curve(val_labels[:, i], dval_pred)
-#             precision = precision * 0.6
-#             f1_scores = (2 * precision * recall) / (precision + recall + 1e-8)
-#             index = argmax(f1_scores)
-#             if len(thresholds) > index:
-#                 probs_Switcher[i] = thresholds[index]
-#             else:
-#                 probs_Switcher[i] = 0.5
-            
-#         # 保存阈值
-#         np.save(f'probs_switcher_fold{fold+1}.npy', probs_Switcher)
-        
-#         # 测试XGBoost模型
-#         test_f1, test_accuracy, test_precision, test_recall, test_specificity, macro_auc, weighted_auc, auc_scores, all_probs, all_labels, all_preds = test_xgb(
-#             test_features, test_labels, xgb_models, probs_Switcher)
-        
-#         # 绘制ROC曲线
-#         plot_roc_curves(all_labels, all_probs, columns_to_encode)
-        
-#         # 绘制混淆矩阵
-#         cm = multilabel_confusion_matrix(all_labels, all_preds)
-#         plot_confusion_matrix(cm, columns_to_encode, fold, num_epochs, is_sum=True)
-
-#         # 生成32×32的混淆矩阵
-#         cm_32x32, precision_32, recall_32, f1_32 = generate_multilabel_confusion_matrix(all_labels, all_preds, fold, num_epochs)
-        
-#         # 输出测试结果
-#         print(
-#             f'Fold [{fold + 1}/{len(selected_folds)}]: '
-#             f'VGG+XGBoost Test F1: {test_f1:.2f}% | '
-#             f'Accuracy: {test_accuracy:.2f}% | '
-#             f'Precision: {test_precision:.2f}% | '
-#             f'Recall: {test_recall:.2f}% | '
-#             f'Specificity: {test_specificity:.2f}% | '
-#             f'Macro AUC: {macro_auc:.3f} | '
-#             f'Weighted AUC: {weighted_auc:.3f}'
-#         )
-        
-#         # 将结果保存到CSV文件
-#         with open('vgg_xgb_results.csv', 'a') as f:
-#             f.write(
-#                 f'fold [{fold + 1}/{len(selected_folds)}], '
-#                 f'VGG+XGBoost Test F1: {test_f1:.2f}%, '
-#                 f'Accuracy: {test_accuracy:.2f}%, '
-#                 f'Precision: {test_precision:.2f}%, '
-#                 f'Recall: {test_recall:.2f}%, '
-#                 f'Specificity: {test_specificity:.2f}%, '
-#                 f'Macro AUC: {macro_auc:.3f}, '
-#                 f'Weighted AUC: {weighted_auc:.3f}\n'
-#             )
-        
-#         # 执行SHAP分析
-#         print("执行SHAP分析...")
-        
-#         # 选择一部分测试数据用于SHAP分析
-#         shap_sample_size = min(100, test_features.shape[0])
-#         shap_indices = np.random.choice(test_features.shape[0], shap_sample_size, replace=False)
-#         shap_data = test_features[shap_indices]
-        
-#         # 执行全局SHAP分析
-#         global_shap_analysis(
-#             models=xgb_models,
-#             background_data=train_features,
-#             test_data=test_features,
-#             feature_names=pca_feature_names,  # PCA特征名称
-#             class_names=columns_to_encode,    # 类别名称
-#             pca_model=pca,                    # PCA模型对象
-#             original_feature_names=filtered_feature_names,  # 原始特征名称
-#             output_dir='figure/global_shap'
-#         )
-        
-#         # 清理内存
-#         del train_features, val_features, test_features
-#         del train_labels, val_labels, test_labels
-#         torch.cuda.empty_cache()
-    
-#     print("所有fold训练和测试完成！")
-    
-#     # 汇总所有fold的结果
-#     print("\n===== 汇总结果 =====")
-    
-#     # 检查结果文件是否存在
-#     if os.path.exists('vgg_xgb_results.csv') and os.path.getsize('vgg_xgb_results.csv') > 0:
-#         try:
-#             # 直接读取文件内容
-#             with open('vgg_xgb_results.csv', 'r') as f:
-#                 lines = f.readlines()
-            
-#             # 提取指标
-#             f1_scores = []
-#             accuracies = []
-#             precisions = []
-#             recalls = []
-#             specificities = []
-#             macro_aucs = []
-#             weighted_aucs = []
-            
-#             for i, line in enumerate(lines):
-#                 try:
-#                     # 使用正则表达式提取指标值
-#                     import re
-                    
-#                     # 提取F1分数
-#                     f1_match = re.search(r'Test F1: (\d+\.\d+)%', line)
-#                     if f1_match:
-#                         f1_scores.append(float(f1_match.group(1)))
-                    
-#                     # 提取准确率
-#                     acc_match = re.search(r'Accuracy: (\d+\.\d+)%', line)
-#                     if acc_match:
-#                         accuracies.append(float(acc_match.group(1)))
-                    
-#                     # 提取精确率
-#                     prec_match = re.search(r'Precision: (\d+\.\d+)%', line)
-#                     if prec_match:
-#                         precisions.append(float(prec_match.group(1)))
-                    
-#                     # 提取召回率
-#                     recall_match = re.search(r'Recall: (\d+\.\d+)%', line)
-#                     if recall_match:
-#                         recalls.append(float(recall_match.group(1)))
-                    
-#                     # 提取特异性
-#                     spec_match = re.search(r'Specificity: (\d+\.\d+)%', line)
-#                     if spec_match:
-#                         specificities.append(float(spec_match.group(1)))
-                    
-#                     # 提取宏观AUC
-#                     macro_match = re.search(r'Macro AUC: (\d+\.\d+)', line)
-#                     if macro_match:
-#                         macro_aucs.append(float(macro_match.group(1)))
-                    
-#                     # 提取加权AUC
-#                     weighted_match = re.search(r'Weighted AUC: (\d+\.\d+)', line)
-#                     if weighted_match:
-#                         weighted_aucs.append(float(weighted_match.group(1)))
-                    
-#                 except Exception as e:
-#                     print(f"处理第{i+1}行时出错：{e}，跳过该行")
-            
-#             if len(f1_scores) > 0:
-#                 # 计算平均值和标准差
-#                 print(f"平均 F1 分数: {np.mean(f1_scores):.2f}% ± {np.std(f1_scores):.2f}%")
-#                 print(f"平均准确率: {np.mean(accuracies):.2f}% ± {np.std(accuracies):.2f}%")
-#                 print(f"平均精确率: {np.mean(precisions):.2f}% ± {np.std(precisions):.2f}%")
-#                 print(f"平均召回率: {np.mean(recalls):.2f}% ± {np.std(recalls):.2f}%")
-#                 print(f"平均特异性: {np.mean(specificities):.2f}% ± {np.std(specificities):.2f}%")
-#                 print(f"平均宏观AUC: {np.mean(macro_aucs):.3f} ± {np.std(macro_aucs):.3f}")
-#                 print(f"平均加权AUC: {np.mean(weighted_aucs):.3f} ± {np.std(weighted_aucs):.3f}")
-                
-#                 # 将汇总结果保存到CSV文件
-#                 with open('vgg_xgb_summary.csv', 'w') as f:
-#                     f.write("指标,平均值,标准差\n")
-#                     f.write(f"F1 分数,{np.mean(f1_scores):.2f}%,{np.std(f1_scores):.2f}%\n")
-#                     f.write(f"准确率,{np.mean(accuracies):.2f}%,{np.std(accuracies):.2f}%\n")
-#                     f.write(f"精确率,{np.mean(precisions):.2f}%,{np.std(precisions):.2f}%\n")
-#                     f.write(f"召回率,{np.mean(recalls):.2f}%,{np.std(recalls):.2f}%\n")
-#                     f.write(f"特异性,{np.mean(specificities):.2f}%,{np.std(specificities):.2f}%\n")
-#                     f.write(f"宏观AUC,{np.mean(macro_aucs):.3f},{np.std(macro_aucs):.3f}\n")
-#                     f.write(f"加权AUC,{np.mean(weighted_aucs):.3f},{np.std(weighted_aucs):.3f}\n")
-#             else:
-#                 print("没有有效的结果数据可以汇总")
-#         except Exception as e:
-#             print(f"汇总结果时出错：{e}")
-#             print("请检查vgg_xgb_results.csv文件格式是否正确")
-#     else:
-#         print("结果文件不存在或为空，无法汇总结果")
 
 def main():
     """
-    主函数，包含程序的主要执行逻辑
+    Main function containing the primary execution logic of the program
     """
-    # 设置类别
+    # set label encoding columns
     columns_to_encode = ['MCQ160B', 'MCQ160C', 'MCQ160D', 'MCQ160E', 'MCQ160F']
-    
-    # 加载数据
+
+    # Load data
     features, labels, all_feature_names, Covariates_features = open_excel('DR-CVD DataSet v1.2', columns_to_encode=columns_to_encode)
     
-    # 保留原始数据用于测试
+    
     features_val = features.copy()
     labels_val = labels.copy()
     
-    # 数据增强
+    # data augmentation using MLSMOTE
     Multilay_origin = pd.DataFrame(features_val, columns=all_feature_names)
     
     labels_DF = pd.DataFrame(labels, columns=columns_to_encode)
@@ -1089,8 +710,8 @@ def main():
     
     features = np.concatenate((features, np.float64(X_res)), axis=0)
     labels = np.concatenate((labels, np.float64(y_res)), axis=0)
-    
-    # 标准化
+
+    # Standardization
     mean_f = np.mean(features, axis=0)
     std_f = np.std(features, axis=0)
     for i in range(len(std_f)):
@@ -1100,68 +721,53 @@ def main():
     features = (features - mean_f) / std_f
     features_val = (features_val - mean_f) / (std_f + 1e-8)
     
-    # # 方差过滤
-    # selector = VarianceThreshold(threshold=0.01)
-    # features = selector.fit_transform(features)
-    # features_val = selector.transform(features_val)
-    
-    # # 更新特征名称
-    # mask = selector.get_support()
-    # filtered_feature_names = all_feature_names[mask]
-    
-    # print("方差过滤后，训练集形状：", features.shape)
-    # print("方差过滤后，验证集形状：", features_val.shape)
+  
         
     filtered_feature_names = all_feature_names.copy()
 
-    # PCA降维
+   
     pca = PCA(n_components=0.95)
     features_pca = pca.fit_transform(features)
     features_val_pca = pca.transform(features_val)
 
-    # 确保标签数据也被正确处理
-    train_labels = labels.copy()  # 添加这行
-    val_labels = labels_val.copy()  # 添加这行
+   
+    train_labels = labels.copy()  #
+    val_labels = labels_val.copy()  #
     
-    # # PCA后再次过滤零方差
-    # pca_selector = VarianceThreshold(threshold=0.01)  
-    # features_pca = pca_selector.fit_transform(features_pca)
-    # features_val_pca = pca_selector.transform(features_val_pca)
+
     
-    # 更新PCA特征名称
+
     pca_feature_names = [f'PC{i}' for i in range(1, features_pca.shape[1] + 1)]
-    print("PCA降维后，训练集形状：", features_pca.shape)
-    print("PCA降维后，验证集形状：", features_val_pca.shape)
+    print("After PCA dimensionality reduction, training set shape:", features_pca.shape)
+    print("After PCA dimensionality reduction, validation set shape:", features_val_pca.shape)
     
-    # 交叉验证划分
+
     folds_data_index = split_data_5fold(features_val_pca)
     
-    # 设置模型参数
+
     num_classes = len(columns_to_encode)
-    num_epochs = 100  # VGG训练轮数
+    num_epochs = 100  
     batch_size = 256
     
-    # 让用户输入想要运行的fold编号
-    # selected_folds_input = input("请输入想要运行的fold编号（用逗号分隔，例如：1,3,5）：")
-    selected_folds_input = '1,2,3,4,5'  # 默认运行所有fold
-    # if not selected_folds_input.strip():
-    #     selected_folds_input = '1,2,3,4,5'  # 默认运行所有fold
+
+    selected_folds_input = '1,2,3,4,5'  
+
     selected_folds = [int(fold.strip()) - 1 for fold in selected_folds_input.split(',')]
     
-    # 存储所有fold的结果
+
     all_fold_results = []
     
-    # 设置设备
+    # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"使用设备: {device}")
+    print(f"Using device: {device}")
     
     for fold, (train_index, validation_index, test_indices) in enumerate(folds_data_index):
         if fold not in selected_folds:
             continue
+
+        print(f"\n========== Processing Fold {fold + 1} ==========")
         
-        print(f"\n========== 开始处理 Fold {fold + 1} ==========")
-        
-        # 准备数据
+        # 
         trainX = features_pca[train_index]
         trainY = labels[train_index]
         valX = features_val_pca[validation_index]
@@ -1169,7 +775,7 @@ def main():
         testX = features_val_pca[test_indices]
         testY = labels_val[test_indices]
         
-        # 创建数据加载器
+        # create datasets and dataloaders
         Train_data = NetDataset(trainX, trainY)
         Validation_data = NetDataset(valX, valY)
         Test_data = NetDataset(testX, testY)
@@ -1178,35 +784,35 @@ def main():
         Validation_data_loader = DataLoader(Validation_data, batch_size=batch_size, shuffle=True, drop_last=True)
         Test_data_loader = DataLoader(Test_data, batch_size=batch_size, shuffle=False, drop_last=False)
         
-        # 第一阶段：训练VGG模型作为特征提取器
-        print("第一阶段：训练VGG模型作为特征提取器...")
+        # Phase 1: Train VGG model as feature extractor
+        print("Phase 1: Training VGG model as feature extractor...")
         
-        # 初始化VGG模型
+        # Initialize VGG model
         input_dim = features_pca.shape[1]
         model = Model_VGG.VGG11(num_classes=num_classes, in_channels=features.shape[1], epoch=num_epochs).to(device)
         
-        # 确保数据类型一致性
-        model = model.float()  # 确保模型参数为float类型
+        # ensure model parameters are float type
+        model = model.float()  
 
-        # 打印模型参数数量
+        # Print model parameter count
         total_num, trainable_num = get_parameter_number(model)
-        print(f'VGG模型总参数: {total_num}, 可训练参数: {trainable_num}')
+        print(f'VGG model total parameters: {total_num}, trainable parameters: {trainable_num}')
         
-        # 定义损失函数和优化器
+       
         criterion = nn.BCEWithLogitsLoss(reduction='mean')
         optimizer = optim.Adam(model.parameters(), lr=0.001)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         
-        # 初始化早停变量
+
         best_valid_f1 = 0
         patience = 10
         counter = 0
         best_epoch = 0
         best_model = None
         
-        # 训练VGG模型
+        # training loop
         for epoch in range(1, num_epochs + 1):
-            # 训练模式
+
             model.train()
             train_loss = 0.0
             train_preds = []
@@ -1214,30 +820,28 @@ def main():
             
             for data, target in Train_data_loader:
                 data, target = data.to(device), target.to(device).float()
-                
-                # 前向传播
+
                 optimizer.zero_grad()
                 output = model(data)
                 loss = criterion(output, target)
                 
-                # 反向传播
+
                 loss.backward()
                 optimizer.step()
                 
                 train_loss += loss.item()
                 
-                # 收集预测结果
+
                 pred = torch.sigmoid(output).detach().cpu().numpy()
                 train_preds.append(pred)
                 train_true.append(target.cpu().numpy())
             
-            # 计算训练指标
+
             train_loss /= len(Train_data_loader)
             train_preds = np.concatenate(train_preds)
             train_true = np.concatenate(train_true)
             train_f1 = f1_score(train_true, (train_preds > 0.5).astype(int), average='macro') * 100
-            
-            # 验证模式
+
             model.eval()
             valid_loss = 0.0
             valid_preds = []
@@ -1246,33 +850,28 @@ def main():
             with torch.no_grad():
                 for data, target in Validation_data_loader:
                     data, target = data.to(device), target.to(device).float()
-                    
-                    # 前向传播
+
                     output = model(data)
                     loss = criterion(output, target)
                     
                     valid_loss += loss.item()
-                    
-                    # 收集预测结果
+
                     pred = torch.sigmoid(output).cpu().numpy()
                     valid_preds.append(pred)
                     valid_true.append(target.cpu().numpy())
-            
-            # 计算验证指标
+
             valid_loss /= len(Validation_data_loader)
             valid_preds = np.concatenate(valid_preds)
             valid_true = np.concatenate(valid_true)
             valid_f1 = f1_score(valid_true, (valid_preds > 0.5).astype(int), average='macro') * 100
             
-            # 更新学习率
+
             scheduler.step()
-            
-            # 打印训练进度
+
             print(f'Epoch {epoch}/{num_epochs} | '
                   f'Train Loss: {train_loss:.4f}, Train F1: {train_f1:.2f}% | '
                   f'Valid Loss: {valid_loss:.4f}, Valid F1: {valid_f1:.2f}%')
-            
-            # 早停检查
+
             if valid_f1 > best_valid_f1:
                 best_valid_f1 = valid_f1
                 counter = 0
@@ -1283,12 +882,11 @@ def main():
                 if counter >= patience:
                     print(f'Early stopping at epoch {epoch}')
                     break
-        
-        # 加载最佳模型
+
         model.load_state_dict(best_model)
-        print(f'使用最佳模型（Epoch {best_epoch}，验证F1: {best_valid_f1:.2f}%）')
+        print(f'Using best model (Epoch {best_epoch}, Validation F1: {best_valid_f1:.2f}%)')
         
-        # 创建特征提取器
+
         class VGGFeatureExtractor(nn.Module):
             def __init__(self, vgg_model):
                 super(VGGFeatureExtractor, self).__init__()
@@ -1297,13 +895,13 @@ def main():
             def forward(self, x):
                 return self.features(x)
         
-        # 初始化特征提取器
+
         feature_extractor = VGGFeatureExtractor(model).to(device)
         feature_extractor.eval()
         
-        print("第二阶段：使用VGG提取特征，XGBoost进行预测...")
+        print("Phase 2: Using VGG to extract features, XGBoost for prediction...")
         
-        # 提取特征函数
+
         def extract_vgg_features(model, data_loader, device):
             model.eval()
             features = []
@@ -1318,7 +916,7 @@ def main():
             
             return np.concatenate(features), np.concatenate(labels)
         
-        # 提取特征
+
         train_features, train_labels = extract_vgg_features(feature_extractor, Train_data_loader, device)
         val_features, val_labels = extract_vgg_features(feature_extractor, Validation_data_loader, device)
         test_features, test_labels = extract_vgg_features(feature_extractor, Test_data_loader, device)
@@ -1327,42 +925,40 @@ def main():
         print(f"提取的验证特征形状: {val_features.shape}, 验证标签形状: {val_labels.shape}")
         print(f"提取的测试特征形状: {test_features.shape}, 测试标签形状: {test_labels.shape}")
         
-        # 为每个类别训练一个XGBoost模型
+
         xgb_models = []
         xgb_feature_names = [f'VGG_Feature_{i}' for i in range(train_features.shape[1])]
         
-        # 计算阈值
+
         probs_Switcher = np.zeros(num_classes)
         
         for i in range(num_classes):
             print(f"训练类别 {columns_to_encode[i]} 的XGBoost模型...")
             
-            # 准备数据
+
             dtrain = xgb.DMatrix(train_features, label=train_labels[:, i])
             dval = xgb.DMatrix(val_features, label=val_labels[:, i])
-            
-            # 计算类别权重
+
             pos_count = np.sum(train_labels[:, i])
             neg_count = len(train_labels[:, i]) - pos_count
             scale_pos_weight = neg_count / pos_count if pos_count > 0 else 1.0
-            
-            # 设置XGBoost参数
+
             params = {
                 'objective': 'binary:logistic',
                 'eval_metric': ['auc', 'logloss'],
-                'max_depth': 4,  # 减小深度防止过拟合
-                'eta': 0.05,  # 降低学习率
+                'max_depth': 4,  
+                'eta': 0.05,  
                 'subsample': 0.7,
                 'colsample_bytree': 0.7,
-                'min_child_weight': 3,  # 增加以减少过拟合
-                'gamma': 0.1,  # 增加以减少过拟合
-                'alpha': 0.2,  # L1正则化
-                'lambda': 1.5,  # L2正则化
-                'scale_pos_weight': scale_pos_weight,  # 处理类别不平衡
+                'min_child_weight': 3,  
+                'gamma': 0.1,  
+                'alpha': 0.2,  
+                'lambda': 1.5,  
+                'scale_pos_weight': scale_pos_weight,  
                 'seed': 3407
             }
             
-            # 使用交叉验证找到最佳迭代次数
+
             cv_results = xgb.cv(
                 params,
                 dtrain,
@@ -1373,23 +969,23 @@ def main():
                 seed=3407
             )
             
-            # 获取最佳迭代次数
-            best_rounds = cv_results.shape[0]
-            print(f"最佳迭代次数: {best_rounds}")
             
-            # 训练模型
+            best_rounds = cv_results.shape[0]
+            print(f"Best number of iterations: {best_rounds}")
+            
+            
             evallist = [(dtrain, 'train'), (dval, 'eval')]
             bst = xgb.train(params, dtrain, best_rounds, evallist, verbose_eval=50)
             
-            # 保存模型
+         
             bst.save_model(f'xgb_model_fold{fold+1}_class{i}.json')
             xgb_models.append(bst)
             
-            # 计算阈值 - 使用更平衡的F1计算方式
+            
             dval_pred = bst.predict(dval)
             precision, recall, thresholds = precision_recall_curve(val_labels[:, i], dval_pred)
             
-            # 直接计算F1，不对精确率进行权重调整
+            
             f1_scores = (2 * precision * recall) / (precision + recall + 1e-8)
             index = argmax(f1_scores)
             
@@ -1398,24 +994,24 @@ def main():
             else:
                 probs_Switcher[i] = 0.5
             
-        # 保存阈值
+        
         np.save(f'probs_switcher_fold{fold+1}.npy', probs_Switcher)
         
-        # 测试XGBoost模型
+       
         test_f1, test_accuracy, test_precision, test_recall, test_specificity, macro_auc, weighted_auc, auc_scores, all_probs, all_labels, all_preds = test_xgb(
             test_features, test_labels, xgb_models, probs_Switcher)
         
-        # 绘制ROC曲线
+        # plot ROC curves
         plot_roc_curves(all_labels, all_probs, columns_to_encode)
         
-        # 绘制混淆矩阵
+        # plot confusion matrix
         cm = multilabel_confusion_matrix(all_labels, all_preds)
         plot_confusion_matrix(cm, columns_to_encode, fold, num_epochs, is_sum=True)
 
-        # 生成32×32的混淆矩阵
+        # generate multilabel confusion matrix
         cm_32x32, precision_32, recall_32, f1_32 = generate_multilabel_confusion_matrix(all_labels, all_preds, fold, num_epochs)
         
-        # 输出测试结果
+        # output results
         print(
             f'Fold [{fold + 1}/{len(selected_folds)}]: '
             f'VGG+XGBoost Test F1: {test_f1:.2f}% | '
@@ -1427,7 +1023,7 @@ def main():
             f'Weighted AUC: {weighted_auc:.3f}'
         )
         
-        # 将结果保存到CSV文件
+
         with open('vgg_xgb_results.csv', 'a') as f:
             f.write(
                 f'fold [{fold + 1}/{len(selected_folds)}], '
@@ -1440,15 +1036,14 @@ def main():
                 f'Weighted AUC: {weighted_auc:.3f}\n'
             )
         
-        # 执行SHAP分析
-        print("执行SHAP分析...")
+        # Execute SHAP analysis
+        print("Executing SHAP analysis...")
         
-        # 选择一部分测试数据用于SHAP分析
+
         shap_sample_size = min(100, test_features.shape[0])
         shap_indices = np.random.choice(test_features.shape[0], shap_sample_size, replace=False)
         shap_data = test_features[shap_indices]
-        
-        # 执行全局SHAP分析
+
         global_shap_analysis(
             models=xgb_models,
             background_data=train_features,
@@ -1460,24 +1055,24 @@ def main():
             output_dir='figure/global_shap'
         )
         
-        # 清理内存
+
         del train_features, val_features, test_features
         del train_labels, val_labels, test_labels
         torch.cuda.empty_cache()
     
-    print("所有fold训练和测试完成！")
+    print("All folds processed successfully!\n")
     
-    # 汇总所有fold的结果
-    print("\n===== 汇总结果 =====")
+    # Summarize results for all folds
+    print("\n===== Summary Results =====")
     
-    # 检查结果文件是否存在
+
     if os.path.exists('vgg_xgb_results.csv') and os.path.getsize('vgg_xgb_results.csv') > 0:
         try:
-            # 直接读取文件内容
+           
             with open('vgg_xgb_results.csv', 'r') as f:
                 lines = f.readlines()
             
-            # 提取指标
+            
             f1_scores = []
             accuracies = []
             precisions = []
@@ -1488,74 +1083,73 @@ def main():
             
             for i, line in enumerate(lines):
                 try:
-                    # 使用正则表达式提取指标值
+                   
                     import re
                     
-                    # 提取F1分数
+                    
                     f1_match = re.search(r'Test F1: (\d+\.\d+)%', line)
                     if f1_match:
                         f1_scores.append(float(f1_match.group(1)))
                     
-                    # 提取准确率
+                   
                     acc_match = re.search(r'Accuracy: (\d+\.\d+)%', line)
                     if acc_match:
                         accuracies.append(float(acc_match.group(1)))
                     
-                    # 提取精确率
+                   
                     prec_match = re.search(r'Precision: (\d+\.\d+)%', line)
                     if prec_match:
                         precisions.append(float(prec_match.group(1)))
                     
-                    # 提取召回率
+                   
                     recall_match = re.search(r'Recall: (\d+\.\d+)%', line)
                     if recall_match:
                         recalls.append(float(recall_match.group(1)))
                     
-                    # 提取特异性
+                   
                     spec_match = re.search(r'Specificity: (\d+\.\d+)%', line)
                     if spec_match:
                         specificities.append(float(spec_match.group(1)))
-                    
-                    # 提取宏观AUC
+                 
                     macro_match = re.search(r'Macro AUC: (\d+\.\d+)', line)
                     if macro_match:
                         macro_aucs.append(float(macro_match.group(1)))
                     
-                    # 提取加权AUC
+                    
                     weighted_match = re.search(r'Weighted AUC: (\d+\.\d+)', line)
                     if weighted_match:
                         weighted_aucs.append(float(weighted_match.group(1)))
                     
                 except Exception as e:
-                    print(f"处理第{i+1}行时出错：{e}，跳过该行")
+                    print(f"Error processing line {i+1}: {line.strip()} - {e}")
             
             if len(f1_scores) > 0:
-                # 计算平均值和标准差
-                print(f"平均 F1 分数: {np.mean(f1_scores):.2f}% ± {np.std(f1_scores):.2f}%")
-                print(f"平均准确率: {np.mean(accuracies):.2f}% ± {np.std(accuracies):.2f}%")
-                print(f"平均精确率: {np.mean(precisions):.2f}% ± {np.std(precisions):.2f}%")
-                print(f"平均召回率: {np.mean(recalls):.2f}% ± {np.std(recalls):.2f}%")
-                print(f"平均特异性: {np.mean(specificities):.2f}% ± {np.std(specificities):.2f}%")
-                print(f"平均宏观AUC: {np.mean(macro_aucs):.3f} ± {np.std(macro_aucs):.3f}")
-                print(f"平均加权AUC: {np.mean(weighted_aucs):.3f} ± {np.std(weighted_aucs):.3f}")
+                # Calculate mean and standard deviation
+                print(f"Average F1 Score: {np.mean(f1_scores):.2f}% ± {np.std(f1_scores):.2f}%")
+                print(f"Average Accuracy: {np.mean(accuracies):.2f}% ± {np.std(accuracies):.2f}%")
+                print(f"Average Precision: {np.mean(precisions):.2f}% ± {np.std(precisions):.2f}%")
+                print(f"Average Recall: {np.mean(recalls):.2f}% ± {np.std(recalls):.2f}%")
+                print(f"Average Specificity: {np.mean(specificities):.2f}% ± {np.std(specificities):.2f}%")
+                print(f"Average Macro AUC: {np.mean(macro_aucs):.3f} ± {np.std(macro_aucs):.3f}")
+                print(f"Average Weighted AUC: {np.mean(weighted_aucs):.3f} ± {np.std(weighted_aucs):.3f}")
                 
-                # 将汇总结果保存到CSV文件
+               
                 with open('vgg_xgb_summary.csv', 'w') as f:
-                    f.write("指标,平均值,标准差\n")
-                    f.write(f"F1 分数,{np.mean(f1_scores):.2f}%,{np.std(f1_scores):.2f}%\n")
-                    f.write(f"准确率,{np.mean(accuracies):.2f}%,{np.std(accuracies):.2f}%\n")
-                    f.write(f"精确率,{np.mean(precisions):.2f}%,{np.std(precisions):.2f}%\n")
-                    f.write(f"召回率,{np.mean(recalls):.2f}%,{np.std(recalls):.2f}%\n")
-                    f.write(f"特异性,{np.mean(specificities):.2f}%,{np.std(specificities):.2f}%\n")
-                    f.write(f"宏观AUC,{np.mean(macro_aucs):.3f},{np.std(macro_aucs):.3f}\n")
-                    f.write(f"加权AUC,{np.mean(weighted_aucs):.3f},{np.std(weighted_aucs):.3f}\n")
+                    f.write("Metric,Mean,Standard Deviation\n")
+                    f.write(f"F1 Score,{np.mean(f1_scores):.2f}%,{np.std(f1_scores):.2f}%\n")
+                    f.write(f"Accuracy,{np.mean(accuracies):.2f}%,{np.std(accuracies):.2f}%\n")
+                    f.write(f"Precision,{np.mean(precisions):.2f}%,{np.std(precisions):.2f}%\n")
+                    f.write(f"Recall,{np.mean(recalls):.2f}%,{np.std(recalls):.2f}%\n")
+                    f.write(f"Specificity,{np.mean(specificities):.2f}%,{np.std(specificities):.2f}%\n")
+                    f.write(f"Macro AUC,{np.mean(macro_aucs):.3f},{np.std(macro_aucs):.3f}\n")
+                    f.write(f"Weighted AUC,{np.mean(weighted_aucs):.3f},{np.std(weighted_aucs):.3f}\n")
             else:
-                print("没有有效的结果数据可以汇总")
+                print("No valid result data to summarize")
         except Exception as e:
-            print(f"汇总结果时出错：{e}")
-            print("请检查vgg_xgb_results.csv文件格式是否正确")
+            print(f"Error summarizing results: {e}")
+            print("Please check if the vgg_xgb_results.csv file format is correct")
     else:
-        print("结果文件不存在或为空，无法汇总结果")
+        print("Result file does not exist or is empty, cannot summarize results")
 
 if __name__ == '__main__':  
     main()

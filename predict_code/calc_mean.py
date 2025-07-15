@@ -1,24 +1,24 @@
 import pandas as pd
 import ast
 
-# 读取CSV文件
+# Read CSV file
 df = pd.read_csv('XGB_all_results.csv')
-df.columns = df.columns.str.strip()  # 新增：去除列名前后空格
+df.columns = df.columns.str.strip()  # Added: remove leading/trailing spaces from column names
 
-# 修改列选择方式（原2:-1改为明确列名）
+# Modified column selection method (changed from original 2:-1 to explicit column names)
 numeric_cols = ['test_f1', 'test_accuracy', 'test_precision', 
                'test_recall', 'test_specificity', 'macro_auc', 'weighted_auc']
-# 计算各数值列均值（排除fold和x列）
+# Calculate mean values for numeric columns (excluding fold and x columns)
 mean_values = df.iloc[:, 2:-1].mean().to_dict()
 
-# 特殊处理auc_scores列（每个位置单独求平均）
+# Special handling for auc_scores column (calculate average for each position separately)
 auc_scores = [ast.literal_eval(s) for s in df['auc_scores']]
 mean_auc_scores = [
     round(sum([s[i] for s in auc_scores])/len(auc_scores), 4) 
     for i in range(5)
 ]
 
-# 创建均值行
+# Create mean row
 mean_row = {
     'fold': 'mean',
     'x': '',
@@ -32,8 +32,8 @@ mean_row = {
     'auc_scores': f'[{", ".join(map(str, mean_auc_scores))}]'
 }
 
-# 添加均值行
+# Add mean row
 df = pd.concat([df, pd.DataFrame([mean_row])], ignore_index=True)
 
-# 保存结果（保持原有格式）
+# Save results (maintain original format)
 df.to_csv('XGB_all_results.csv', index=False, float_format='%.4f')
