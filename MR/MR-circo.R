@@ -6,35 +6,35 @@ library(GenomicRanges)
 library(dplyr)
 library(circlize)
 library(ComplexHeatmap)  # For colorRamp2 function
-library(viridis)      # 提供 cividis、magma 等色带
-library(RColorBrewer) # 提供经典调色板
+library(viridis)      # Provides cividis, magma and other color schemes
+library(RColorBrewer) # Provides classic color palettes
 
 
-# —— 1. 热图色带 ——  
-# 用 viridis::cividis，视觉平滑且对色盲友好
+# —— 1. Heatmap color scheme ——  
+# Use viridis::cividis, visually smooth and colorblind-friendly
 max_den <- max(dens_exp$density, na.rm = TRUE)
 col_fun_heat <- colorRamp2(
   breaks = c(0, max_den/4, max_den/2, 3*max_den/4, max_den),
   colors = viridis(5, option = "cividis")
 )
 
-# —— 2. 染色体背景色 ——  
-# 全部用浅灰色，让热图和散点更突出
+# —— 2. Chromosome background color ——  
+# All use light gray to make heatmap and scatter plots more prominent
 chr_list <- paste0("chr", c(1:22, "X", "Y"))
 chr_cols <- setNames(
   rep("#EEEEEE", length(chr_list)),
   chr_list
 )
 
-# —— 3. 曝露/结局组散点色 ——  
-# 选用 Nature 期刊常用的高对比蓝—橙配色
+# —— 3. Exposure/outcome group scatter colors ——  
+# Use high-contrast blue-orange color scheme commonly used in Nature journals
 group_cols <- c(
-  exposure = "#0072B2",  # 深蓝
-  outcome  = "#D55E00"   # 橙红
+  exposure = "#0072B2",  # Deep blue
+  outcome  = "#D55E00"   # Orange-red
 )
 
-# —— 4. 阈值线颜色 ——  
-# 画成深灰，低调不抢散点风头
+# —— 4. Threshold line color ——  
+# Draw in dark gray, low-key and doesn't steal the spotlight from scatter plots
 th_col <- "#333333"
 
 # New: Load BSgenome package to get chromosome lengths
@@ -213,21 +213,21 @@ scat_all <- bind_rows(scat_exp, scat_out)
 
 
 # ------------------------------
-# 4. 用 circlize 画出：外圈热力 + 多圈彩色散点曼哈顿
+# 4. Use circlize to plot: outer ring heatmap + multi-ring colored scatter Manhattan
 # ------------------------------
 
 png("A_group_circos_beautiful2.png",
     width = 3000, height = 3000, res = 600)
 
 library(RColorBrewer)
-# 为每条染色体准备不同颜色(共24)
+# Prepare different colors for each chromosome (total 24)
 chr_list <- paste0("chr", c(1:22, "X", "Y"))
 chr_cols <- setNames(
   brewer.pal(12, "Set3")[rep(1:12, each=2)][1:24],
   chr_list
 )
 
-# heatmap 调色函数 (0–95%分位数映射到白→红)
+# heatmap color function (map 0–95% quantile to white→red)
 max_den <- quantile(dens_exp$density, 0.95)
 col_fun_heat <- colorRamp2(c(0, max_den), c("white", "red"))
 
@@ -239,7 +239,7 @@ circos.par(
   track.margin = c(0.02,0.02)
 )
 
-# 初始化基于染色体长度
+# Initialize based on chromosome lengths
 circos.initialize(
   factors = chrom_sizes$chr,
   xlim    = matrix(c(rep(0, nrow(chrom_sizes)),
@@ -247,15 +247,15 @@ circos.initialize(
                    ncol=2)
 )
 
-# === 最外圈：密度热力图 ===
-# 1. 重新设置热图色带：用全部最大密度
+# === Outermost ring: density heatmap ===
+# 1. Reset heatmap color scheme: use maximum density overall
 max_den <- max(dens_exp$density, na.rm = TRUE)
 col_fun_heat <- colorRamp2(
   breaks = c(0, max_den/4, max_den/2, 3*max_den/4, max_den),
   colors = c("white", "lightblue", "yellow", "orange", "red")
 )
 
-# === 最外圈：密度热力图 ===
+# === Outermost ring: density heatmap ===
 circos.trackPlotRegion(
   track.height = 0.08,
   bg.border    = NA,
@@ -278,7 +278,7 @@ circos.trackPlotRegion(
   }
 )
 
-# === 第二圈：曝光组曼哈顿散点 ===
+# === Second ring: exposure group Manhattan scatter ===
 circos.trackPlotRegion(
   track.height = 0.12,
   bg.border    = NA,
@@ -300,7 +300,7 @@ circos.trackPlotRegion(
   }
 )
 
-# === 第三圈：结局组曼哈顿散点 ===
+# === Third ring: outcome group Manhattan scatter ===
 circos.trackPlotRegion(
   track.height = 0.12,
   bg.border    = NA,
@@ -325,9 +325,9 @@ circos.trackPlotRegion(
   }
 )
 
-# === 第四层：合并组散点 + 阈值线 ===
+# === Fourth layer: combined group scatter + threshold line ===
 circos.trackPlotRegion(
-  track.height = 0.15,  # 增加轨道高度
+  track.height = 0.15,  # Increase track height
   bg.border    = NA,
   ylim         = c(0, max_lp_all * 1.1),
   panel.fun    = function(x, y) {
@@ -335,24 +335,24 @@ circos.trackPlotRegion(
     df  <- scat_all %>%
       filter(chr == chr)
     if (nrow(df) > 0) {
-      # 散点，添加透明度
+      # Scatter points, add transparency
       circos.points(
         df$pos,
         df$lp,
         col = adjustcolor(group_cols[df$group], alpha.f = 0.6),
         pch = ifelse(df$group == "exposure", 16, 17),
-        cex = 0.4  # 减小点的大小
+        cex = 0.4  # Reduce point size
       )
-      # 阈值线
+      # Threshold line
       xlim <- CELL_META$xlim
       circos.lines(
         x   = xlim,
         y   = rep(th, 2),
         col = th_col,
         lty = 2,
-        lwd = 1.5  # 增加阈值线宽度
+        lwd = 1.5  # Increase threshold line width
       )
-      # 标注同时显著的 SNPs
+      # Annotate SNPs significant in both
       df_both <- df %>% filter(lp > th)
       if (nrow(df_both) > 0) {
         circos.points(
@@ -367,7 +367,7 @@ circos.trackPlotRegion(
   }
 )
 
-# === 染色体标签和基因注释 ===
+# === Chromosome labels and gene annotation ===
 circos.trackPlotRegion(
   track.index = 1,
   bg.border    = NA,
@@ -378,9 +378,9 @@ circos.trackPlotRegion(
       gsub("chr", "", CELL_META$sector.index),
       facing       = "clockwise",
       niceFacing   = TRUE,
-      cex          = 0.7  # 调整标签字体大小
+      cex          = 0.7  # Adjust label font size
     )
-    # 添加关键基因注释
+    # Add key gene annotations
     gene_pos <- data.frame(
       gene = c("GeneA", "GeneB"),
       pos = c(12345678, 87654321),
@@ -394,14 +394,14 @@ circos.trackPlotRegion(
           CELL_META$ylim[2] + mm_y(4),
           gene_sub$gene[i],
           col = "blue",
-          cex = 0.5  # 调整基因注释字体大小
+          cex = 0.5  # Adjust gene annotation font size
         )
       }
     }
   }
 )
 
-# === 图例和注释 ===
+# === Legend and annotations ===
 legend(
   "bottom",
   legend = c("Exposure SNP", "Outcome SNP", "Significant in Both", "Threshold"),
@@ -419,7 +419,7 @@ mtext(
   col = "darkgrey"
 )
 
-# === 染色体标签 ===
+# === Chromosome labels ===
 circos.trackPlotRegion(
   track.index = 1,
   bg.border    = NA,
@@ -435,7 +435,7 @@ circos.trackPlotRegion(
   }
 )
 
-# === 标题 & 图例 ===
+# === Title & Legend ===
 title("Genomic Circos: CVD vs DR", col.main = "#444444", cex.main = 1.5)
 legend(
   "bottom",
